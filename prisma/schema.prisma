@@ -1,0 +1,291 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+  DELAYED
+}
+
+enum ActivityStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CRITICAL_DELAY
+}
+
+enum ActivityType {
+  TASK_DEPENDENT
+  RESOURCE_DEPENDENT
+  START_MILESTONE
+  FINISH_MILESTONE
+  LEVEL_OF_EFFORT
+}
+
+enum RelationshipType {
+  FS
+  SS
+  FF
+  SF
+}
+
+enum ResourceType {
+  LABOR
+  EQUIPMENT
+  MATERIAL
+  SUBCONTRACTOR
+}
+
+model Project {
+  id             String           @id @default(cuid())
+  projectId      String           @unique
+  projectName    String
+  client         String
+  contractor     String
+  contractAmount Decimal          @db.Decimal(14, 2)
+  startDate      DateTime
+  finishDate     DateTime
+  status         ProjectStatus    @default(PLANNED)
+  wbs            Wbs[]
+  activities     Activity[]
+  calendars      Calendar[]
+  baselines      Baseline[]
+  reports        Report[]
+  delayLogs      DelayLog[]
+  progress       ProgressUpdate[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status, startDate])
+  @@index([client])
+}
+
+model Wbs {
+  id          String     @id @default(cuid())
+  projectId   String
+  parentId    String?
+  code        String
+  name        String
+  progressPct Decimal    @default(0) @db.Decimal(5, 2)
+  duration    Int        @default(0)
+  budgetCost  Decimal    @default(0) @db.Decimal(14, 2)
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      Wbs?       @relation("WbsTree", fields: [parentId], references: [id])
+  children    Wbs[]      @relation("WbsTree")
+  activities  Activity[]
+
+  @@unique([projectId, code])
+  @@index([projectId, parentId])
+}
+
+model Activity {
+  id                String             @id @default(cuid())
+  projectId         String
+  wbsId             String
+  calendarId        String?
+  activityId        String
+  activityName      String
+  activityType      ActivityType       @default(TASK_DEPENDENT)
+  duration          Int
+  remainingDuration Int                @default(0)
+  percentComplete   Decimal            @default(0) @db.Decimal(5, 2)
+  startDate         DateTime
+  finishDate        DateTime
+  actualStart       DateTime?
+  actualFinish      DateTime?
+  earlyStart        DateTime?
+  earlyFinish       DateTime?
+  lateStart         DateTime?
+  lateFinish        DateTime?
+  totalFloat        Int                @default(0)
+  freeFloat         Int                @default(0)
+  isCritical        Boolean            @default(false)
+  status            ActivityStatus     @default(NOT_STARTED)
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  wbs               Wbs                @relation(fields: [wbsId], references: [id])
+  calendar          Calendar?          @relation(fields: [calendarId], references: [id])
+  predecessors      Relationship[]     @relation("Successor")
+  successors        Relationship[]     @relation("Predecessor")
+  resources         ActivityResource[]
+  costs             Cost?
+  baselineItems     BaselineActivity[]
+  progressUpdates   ProgressUpdate[]
+  delayLogs         DelayLog[]
+
+  @@unique([projectId, activityId])
+  @@index([projectId, status])
+  @@index([projectId, isCritical])
+  @@index([startDate, finishDate])
+}
+
+model Relationship {
+  id            String           @id @default(cuid())
+  predecessorId String
+  successorId   String
+  type          RelationshipType @default(FS)
+  lagDays       Int              @default(0)
+  predecessor   Activity         @relation("Predecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  successor     Activity         @relation("Successor", fields: [successorId], references: [id], onDelete: Cascade)
+
+  @@unique([predecessorId, successorId, type])
+  @@index([successorId])
+}
+
+model Calendar {
+  id          String     @id @default(cuid())
+  projectId   String?
+  name        String
+  calendarType String
+  workingDays Json
+  holidays    Json
+  overtime    Json?
+  shifts      Json?
+  project     Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+
+  @@index([projectId, calendarType])
+}
+
+model Resource {
+  id          String             @id @default(cuid())
+  resourceId  String             @unique
+  name        String
+  type        ResourceType
+  unitCost    Decimal            @db.Decimal(12, 2)
+  availability Decimal           @db.Decimal(10, 2)
+  assignments ActivityResource[]
+
+  @@index([type])
+}
+
+model ActivityResource {
+  id          String   @id @default(cuid())
+  activityId  String
+  resourceId  String
+  quantity    Decimal  @db.Decimal(12, 2)
+  unitCost    Decimal  @db.Decimal(12, 2)
+  totalCost   Decimal  @db.Decimal(14, 2)
+  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  resource    Resource @relation(fields: [resourceId], references: [id])
+
+  @@unique([activityId, resourceId])
+  @@index([resourceId])
+}
+
+model Cost {
+  id            String   @id @default(cuid())
+  activityId    String   @unique
+  budgetCost    Decimal  @default(0) @db.Decimal(14, 2)
+  actualCost    Decimal  @default(0) @db.Decimal(14, 2)
+  remainingCost Decimal  @default(0) @db.Decimal(14, 2)
+  forecastCost  Decimal  @default(0) @db.Decimal(14, 2)
+  costVariance  Decimal  @default(0) @db.Decimal(14, 2)
+  plannedValue  Decimal  @default(0) @db.Decimal(14, 2)
+  earnedValue   Decimal  @default(0) @db.Decimal(14, 2)
+  activity      Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+}
+
+model Baseline {
+  id          String             @id @default(cuid())
+  projectId   String
+  name        String
+  savedAt     DateTime           @default(now())
+  project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activities  BaselineActivity[]
+
+  @@index([projectId, savedAt])
+}
+
+model BaselineActivity {
+  id             String   @id @default(cuid())
+  baselineId     String
+  activityId     String
+  baselineStart  DateTime
+  baselineFinish DateTime
+  currentStart   DateTime
+  currentFinish  DateTime
+  varianceDays   Int
+  baseline       Baseline @relation(fields: [baselineId], references: [id], onDelete: Cascade)
+  activity       Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([baselineId, activityId])
+}
+
+model ProgressUpdate {
+  id                 String   @id @default(cuid())
+  projectId          String
+  activityId         String
+  dataDate           DateTime
+  percentComplete    Decimal  @db.Decimal(5, 2)
+  dailyAccomplishment String
+  actualCost         Decimal  @default(0) @db.Decimal(14, 2)
+  productivity       Decimal? @db.Decimal(10, 2)
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activity           Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, dataDate])
+  @@index([activityId, dataDate])
+}
+
+model DelayLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  activityId  String
+  delayType   String
+  severity    String
+  impactDays  Int
+  description String
+  detectedAt  DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, severity])
+  @@index([activityId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  projectId   String
+  reportType  String
+  format      String
+  title       String
+  generatedBy String
+  generatedAt DateTime @default(now())
+  payload     Json
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, reportType])
+}
+
+model User {
+  id        String  @id @default(cuid())
+  email     String  @unique
+  name      String
+  roles     UserRole[]
+  createdAt DateTime @default(now())
+}
+
+model Role {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  permissions Json
+  users       UserRole[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
