@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "python3 -m http.server 4173",
+    "start": "python3 -m http.server 4173",
     "build": "rm -rf dist && mkdir -p dist/src dist/prisma && cp index.html dist/index.html && cp src/styles.css src/main.js dist/src/ && cp prisma/schema.prisma dist/prisma/",
     "preview": "python3 -m http.server 4173 -d dist"
   }
