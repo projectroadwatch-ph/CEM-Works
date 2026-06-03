@@ -37,8 +37,4 @@ http://127.0.0.1:4173
 
 - Primavera-style dark-blue header, ribbon toolbar, project controls navigation, Activities table, Gantt chart, baseline bars, dependency lines, and bottom details tabs.
 - Construction sample project data with WBS, activities, progress, float, critical delay, resources, costs, earned value indicators, reports, and project administration actions.
-- Local browser persistence using `localStorage`, so edits, progress updates, baselines, delay logs, resources, and audit entries remain available after refresh.
-- Functional activity controls for creating, editing, duplicating, deleting, linking, calculating, updating progress, saving baselines, comparing baselines, assigning resources, exporting CSV, backing up the full project JSON, and resetting demo data.
-- Construction-control modules for daily progress, BOQ/quantity tracking, procurement packages, submittals/RFIs/inspections, constraint logs, lookahead planning, weather logs, change orders, location breakdowns, risk register, approvals, audit trail, delay reporting, and report-builder views.
-- A calendar-aware CPM-style schedule calculation prototype with WBS rollups, early/finish dates, remaining duration, total float, free float, critical-path highlighting, baseline variance checks, resource usage summaries, and construction readiness scoring.
-- Prisma schema for future backend implementation with Projects, WBS, Activities, Relationships, Calendars, Resources, ActivityResources, Costs, Baselines, ProgressUpdates, DelayLogs, Reports, Users, Roles, BOQ items, cost codes, procurement, locations, constraints, lookahead plans, documents, inspections, risks, approvals, audit logs, weather logs, and change orders.
+- Prisma schema for future backend implementation with Projects, WBS, Activities, Relationships, Calendars, Resources, ActivityResources, Costs, Baselines, ProgressUpdates, DelayLogs, Reports, Users, and Roles.
