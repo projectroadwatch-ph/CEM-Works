@@ -31,6 +31,13 @@ enum ActivityType {
   LEVEL_OF_EFFORT
 }
 
+enum ActivityPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
 enum RelationshipType {
   FS
   SS
@@ -43,6 +50,12 @@ enum ResourceType {
   EQUIPMENT
   MATERIAL
   SUBCONTRACTOR
+}
+
+enum ExportFormat {
+  PDF
+  EXCEL
+  CSV
 }
 
 model Project {
@@ -60,8 +73,10 @@ model Project {
   calendars      Calendar[]
   baselines      Baseline[]
   reports        Report[]
+  reportExports  ReportExport[]
   delayLogs      DelayLog[]
   progress       ProgressUpdate[]
+  auditLogs      AuditLog[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -94,7 +109,9 @@ model Activity {
   calendarId        String?
   activityId        String
   activityName      String
+  description       String             @default("")
   activityType      ActivityType       @default(TASK_DEPENDENT)
+  priority          ActivityPriority   @default(NORMAL)
   duration          Int
   remainingDuration Int                @default(0)
   percentComplete   Decimal            @default(0) @db.Decimal(5, 2)
@@ -120,6 +137,8 @@ model Activity {
   baselineItems     BaselineActivity[]
   progressUpdates   ProgressUpdate[]
   delayLogs         DelayLog[]
+  earnedValue       EarnedValue?
+  auditLogs         AuditLog[]
 
   @@unique([projectId, activityId])
   @@index([projectId, status])
@@ -206,14 +225,16 @@ model Baseline {
 }
 
 model BaselineActivity {
-  id             String   @id @default(cuid())
-  baselineId     String
-  activityId     String
-  baselineStart  DateTime
-  baselineFinish DateTime
-  currentStart   DateTime
-  currentFinish  DateTime
-  varianceDays   Int
+  id               String   @id @default(cuid())
+  baselineId       String
+  activityId       String
+  baselineStart    DateTime
+  baselineFinish   DateTime
+  baselineDuration Int
+  baselineCost     Decimal  @default(0) @db.Decimal(14, 2)
+  currentStart     DateTime
+  currentFinish    DateTime
+  varianceDays     Int
   baseline       Baseline @relation(fields: [baselineId], references: [id], onDelete: Cascade)
   activity       Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
@@ -252,6 +273,22 @@ model DelayLog {
   @@index([activityId])
 }
 
+model EarnedValue {
+  id           String   @id @default(cuid())
+  activityId   String   @unique
+  dataDate     DateTime
+  plannedValue Decimal  @default(0) @db.Decimal(14, 2)
+  earnedValue  Decimal  @default(0) @db.Decimal(14, 2)
+  actualCost   Decimal  @default(0) @db.Decimal(14, 2)
+  schedulePerformanceIndex Decimal @default(0) @db.Decimal(8, 4)
+  costPerformanceIndex     Decimal @default(0) @db.Decimal(8, 4)
+  scheduleVariance Decimal @default(0) @db.Decimal(14, 2)
+  costVariance     Decimal @default(0) @db.Decimal(14, 2)
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([dataDate])
+}
+
 model Report {
   id          String   @id @default(cuid())
   projectId   String
@@ -262,8 +299,40 @@ model Report {
   generatedAt DateTime @default(now())
   payload     Json
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportExports ReportExport[]
 
   @@index([projectId, reportType])
+}
+
+model ReportExport {
+  id          String       @id @default(cuid())
+  projectId   String
+  reportId    String?
+  format      ExportFormat
+  status      String
+  generatedBy String
+  generatedAt DateTime     @default(now())
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  report      Report?      @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, format])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  activityId  String?
+  action      String
+  entityType  String
+  entityId    String
+  description String
+  createdBy   String
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([activityId])
 }
 
 model User {
