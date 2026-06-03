@@ -52,6 +52,12 @@ enum ResourceType {
   SUBCONTRACTOR
 }
 
+enum ExportFormat {
+  PDF
+  EXCEL
+  CSV
+}
+
 model Project {
   id             String           @id @default(cuid())
   projectId      String           @unique
@@ -67,8 +73,10 @@ model Project {
   calendars      Calendar[]
   baselines      Baseline[]
   reports        Report[]
+  reportExports  ReportExport[]
   delayLogs      DelayLog[]
   progress       ProgressUpdate[]
+  auditLogs      AuditLog[]
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
@@ -130,6 +138,7 @@ model Activity {
   progressUpdates   ProgressUpdate[]
   delayLogs         DelayLog[]
   earnedValue       EarnedValue?
+  auditLogs         AuditLog[]
 
   @@unique([projectId, activityId])
   @@index([projectId, status])
@@ -290,8 +299,40 @@ model Report {
   generatedAt DateTime @default(now())
   payload     Json
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportExports ReportExport[]
 
   @@index([projectId, reportType])
+}
+
+model ReportExport {
+  id          String       @id @default(cuid())
+  projectId   String
+  reportId    String?
+  format      ExportFormat
+  status      String
+  generatedBy String
+  generatedAt DateTime     @default(now())
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  report      Report?      @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, format])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  activityId  String?
+  action      String
+  entityType  String
+  entityId    String
+  description String
+  createdBy   String
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([activityId])
 }
 
 model User {

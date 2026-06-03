@@ -1,4 +1,6 @@
 const ribbonTabs = ['File', 'Edit', 'View', 'Project', 'Activities', 'Relationships', 'Schedule', 'Resources', 'Cost', 'Reports', 'Tools', 'Help'];
+const moduleTabs = ['Activities', 'WBS', 'Relationships', 'Resources', 'Costs', 'Progress', 'Baselines', 'Delay Analysis', 'Earned Value', 'Reports'];
+const detailTabs = ['General', 'Relationships', 'Resources', 'Costs', 'Progress', 'Baselines', 'Delay', 'Earned Value', 'Audit'];
 const ribbonGroups = [
   ['Project', [['▣', 'Create Project', 'create-project'], ['▤', 'Open Project', 'open-project'], ['✎', 'Edit Project', 'edit-project'], ['◴', 'Archive Project', 'archive-project']]],
   ['WBS', [['＋', 'Add WBS', 'add-wbs'], ['✎', 'Edit WBS', 'edit-wbs'], ['×', 'Delete WBS', 'delete-wbs'], ['⇥', 'Indent', 'indent'], ['⇤', 'Outdent', 'outdent']]],
