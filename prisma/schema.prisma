@@ -31,6 +31,13 @@ enum ActivityType {
   LEVEL_OF_EFFORT
 }
 
+enum ActivityPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
 enum RelationshipType {
   FS
   SS
@@ -94,7 +101,9 @@ model Activity {
   calendarId        String?
   activityId        String
   activityName      String
+  description       String             @default("")
   activityType      ActivityType       @default(TASK_DEPENDENT)
+  priority          ActivityPriority   @default(NORMAL)
   duration          Int
   remainingDuration Int                @default(0)
   percentComplete   Decimal            @default(0) @db.Decimal(5, 2)
@@ -120,6 +129,7 @@ model Activity {
   baselineItems     BaselineActivity[]
   progressUpdates   ProgressUpdate[]
   delayLogs         DelayLog[]
+  earnedValue       EarnedValue?
 
   @@unique([projectId, activityId])
   @@index([projectId, status])
@@ -206,14 +216,16 @@ model Baseline {
 }
 
 model BaselineActivity {
-  id             String   @id @default(cuid())
-  baselineId     String
-  activityId     String
-  baselineStart  DateTime
-  baselineFinish DateTime
-  currentStart   DateTime
-  currentFinish  DateTime
-  varianceDays   Int
+  id               String   @id @default(cuid())
+  baselineId       String
+  activityId       String
+  baselineStart    DateTime
+  baselineFinish   DateTime
+  baselineDuration Int
+  baselineCost     Decimal  @default(0) @db.Decimal(14, 2)
+  currentStart     DateTime
+  currentFinish    DateTime
+  varianceDays     Int
   baseline       Baseline @relation(fields: [baselineId], references: [id], onDelete: Cascade)
   activity       Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
 
@@ -250,6 +262,22 @@ model DelayLog {
 
   @@index([projectId, severity])
   @@index([activityId])
+}
+
+model EarnedValue {
+  id           String   @id @default(cuid())
+  activityId   String   @unique
+  dataDate     DateTime
+  plannedValue Decimal  @default(0) @db.Decimal(14, 2)
+  earnedValue  Decimal  @default(0) @db.Decimal(14, 2)
+  actualCost   Decimal  @default(0) @db.Decimal(14, 2)
+  schedulePerformanceIndex Decimal @default(0) @db.Decimal(8, 4)
+  costPerformanceIndex     Decimal @default(0) @db.Decimal(8, 4)
+  scheduleVariance Decimal @default(0) @db.Decimal(14, 2)
+  costVariance     Decimal @default(0) @db.Decimal(14, 2)
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([dataDate])
 }
 
 model Report {
